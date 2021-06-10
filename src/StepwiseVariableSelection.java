@@ -2,14 +2,13 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 
-public abstract class StepwiseVariableSelection {
+public abstract class StepwiseVariableSelection implements VariableSelection{
 	public Strategy strategy;
 	public DataSet dataSet;
 	public boolean[] isEliminatedAttr;
 	public int numSets = 8;
 	public double[] instanceWeights;
 	public int kOpt = 7;
-	
 	protected double calcError(int[][] kNNindices) {
 		double error = 0.0;
 		for (int i = 0; i < this.dataSet.numTrainExs; i++) {

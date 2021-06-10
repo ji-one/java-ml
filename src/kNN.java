@@ -24,8 +24,11 @@ public class kNN implements Classifier{
 	// use 8 different sets for cross validation
 	private int numSets = 8;
 	private Strategy strategy;
-	private StepwiseVariableSelection strate;
+	private VariableSelection selection;
 	
+	public void setVariableSelection(VariableSelection selection) {
+		this.selection = selection;
+	}
 	public DataSet getDataSet() {
 		return dataSet;
 	}
@@ -74,8 +77,9 @@ public class kNN implements Classifier{
 		this.kOpt = findOptimalK(this.kMin, this.kMax);
 		
 		initInstanceWeights();
-		backwardsElimination backwards = new backwardsElimination(dataSet, strategy, isEliminatedAttr, instanceWeights);
-		backwards.backwardsElimination();
+		
+		setVariableSelection(new backwardsElimination());
+		selection.variableSelection(dataSet, strategy, isEliminatedAttr, instanceWeights);
 		traininstanceWeights(1);		
 	}
 	/** Constructor for the kNN machine learning algorithm.

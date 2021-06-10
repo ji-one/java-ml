@@ -3,8 +3,9 @@ import java.util.Comparator;
 
 public class backwardsElimination extends StepwiseVariableSelection {
 
-	public void backwardsElimination() {
-		
+	public void variableSelection(DataSet dataSet, Strategy strategy, boolean[] isEliminatedAttr,
+			double[] instanceWeights) {
+		backwardsEliminations(dataSet, strategy, isEliminatedAttr, instanceWeights);
 		double[][] distances = distanceSettingForBackward();
 		
 		int[][] orderedIndices = orderedIndices(distances);
@@ -13,6 +14,16 @@ public class backwardsElimination extends StepwiseVariableSelection {
 		double baselineError = calcError(orderedIndices);
 		
 		distances = iterateEachAttribute(distances, orderedIndices, baselineError);
+	}
+	private void backwardsEliminations(DataSet dataSet, Strategy strategy, boolean[] isEliminatedAttr,
+			double[] instanceWeights) {
+		this.dataSet = dataSet;
+		this.strategy = strategy;
+		this.isEliminatedAttr = isEliminatedAttr;
+		this.instanceWeights = instanceWeights;
+	}
+	public backwardsElimination() {
+		
 	}
 	public backwardsElimination(DataSet dataSet, Strategy strategy, boolean[] isEliminatedAttr,
 			double[] instanceWeights) {
@@ -41,7 +52,7 @@ public class backwardsElimination extends StepwiseVariableSelection {
 				newdistance = temporaryDistances;
 				sum++;
 			}
-			//if(m == this.d.numAttrs - 1)
+			//if(m == this.dataSet.numAttrs - 1)
 			//	System.out.printf("%d attributes removed.\n", sum);
 		}
 		return newdistance;

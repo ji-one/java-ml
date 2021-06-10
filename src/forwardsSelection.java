@@ -3,7 +3,9 @@ import java.util.Comparator;
 
 public class forwardsSelection extends StepwiseVariableSelection {
 	
-	public void forwardsSelection() {
+	public void variableSelection(DataSet dataSet, Strategy strategy, boolean[] isEliminatedAttr,
+			double[] instanceWeights) {
+		forwardsSelections(dataSet, strategy, isEliminatedAttr, instanceWeights);
 		removeAllAttributes();
 		
 		double[][] distances = setCrossValidationDistance();
@@ -49,6 +51,14 @@ public class forwardsSelection extends StepwiseVariableSelection {
 				//System.out.println("Added attribute " + minErrorIndex);
 			}
 		} while (attributeAdded);
+	}
+	private void forwardsSelections(DataSet dataSet, Strategy strategy, boolean[] isEliminatedAttr,
+			double[] instanceWeights) {
+		this.dataSet = dataSet;
+		this.strategy = strategy;
+		this.isEliminatedAttr = isEliminatedAttr;
+		this.instanceWeights = instanceWeights;
+		
 	}
 	public forwardsSelection(DataSet dataSet, Strategy strategy, boolean[] isEliminatedAttr,
 			double[] instanceWeights) {
