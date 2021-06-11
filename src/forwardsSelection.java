@@ -3,7 +3,9 @@ import java.util.Comparator;
 
 public class forwardsSelection extends StepwiseVariableSelection {
 	
-	public void forwardsSelection() {
+	public void variableSelection(DataSet dataSet, Strategy strategy, boolean[] isEliminatedAttr,
+			double[] instanceWeights) {
+		forwardsSelections(dataSet, strategy, isEliminatedAttr, instanceWeights);
 		removeAllAttributes();
 		
 		double[][] distances = setCrossValidationDistance();
@@ -50,6 +52,14 @@ public class forwardsSelection extends StepwiseVariableSelection {
 			}
 		} while (attributeAdded);
 	}
+	private void forwardsSelections(DataSet dataSet, Strategy strategy, boolean[] isEliminatedAttr,
+			double[] instanceWeights) {
+		this.dataSet = dataSet;
+		this.strategy = strategy;
+		this.isEliminatedAttr = isEliminatedAttr;
+		this.instanceWeights = instanceWeights;
+		
+	}
 	public forwardsSelection(DataSet dataSet, Strategy strategy, boolean[] isEliminatedAttr,
 			double[] instanceWeights) {
 		this.dataSet = dataSet;
@@ -75,8 +85,30 @@ public class forwardsSelection extends StepwiseVariableSelection {
 		}
 		return orderedIndices;
 	}
-
-	
+	protected double getDistance(int[] vector1, int[] vector2) {
+		int len = Math.min(vector1.length, vector2.length);
+		int distance = 0;
+		for (int i = 0; i < len; i++) {
+			// skip if attribute is eliminated
+			if (this.isEliminatedAttr[i] == true) continue;
+			distance += this.strategy.getDistanceStrategy().calcDistance(vector1[i], vector2[i]);
+		}
+        return distance;
+    }
+	protected int voteCount(int[] indices) {
+		double vote_1 = 0;
+    	double vote_0 = 0;
+    	int len = Math.min(indices.length, this.kOpt);
+    	for (int k = 0; k < len; k++) {
+    		int index = indices[k];
+    		if (this.dataSet.trainLabel[index] == 1)
+    			vote_1 += this.instanceWeights[index];
+    		else
+    			vote_0 += this.instanceWeights[index];
+    	}
+    	
+    	return (vote_1 > vote_0)? 1 : 0;
+	}
 	protected double[][] linearForwardDistanceUpdate(double[][] distances, int m) {
 		// linear-time distance update
 		double[][] temporaryDistances = new double[this.dataSet.numTrainExs][this.dataSet.numTrainExs];
@@ -90,10 +122,11 @@ public class forwardsSelection extends StepwiseVariableSelection {
 		
 		return temporaryDistances;
 	}
-	protected void removeAllAttributes() {
+	protected boolean[] removeAllAttributes() {
 		// remove all attributes
 		for (int i = 0; i < this.isEliminatedAttr.length; i++)
 			this.isEliminatedAttr[i] = true;
+		return isEliminatedAttr;
 	}
 
 	

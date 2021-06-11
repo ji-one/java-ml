@@ -2,6 +2,10 @@
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
+import java.util.Random;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 
 public class kNN implements Classifier {
 
@@ -22,8 +26,11 @@ public class kNN implements Classifier {
 	// use 8 different sets for cross validation
 	private int numSets = 8;
 	private Strategy strategy;
-	private StepwiseVariableSelection strate;
-
+	private VariableSelection selection;
+	
+	public void setVariableSelection(VariableSelection selection) {
+		this.selection = selection;
+	}
 	public DataSet getDataSet() {
 		return dataSet;
 	}
@@ -59,6 +66,20 @@ public class kNN implements Classifier {
 	public void setIsEliminatedAttr(boolean[] isEliminatedAttr) {
 		this.isEliminatedAttr = isEliminatedAttr;
 	}
+	public void setInstanceWeights(double[] instanceWeights) {
+		this.instanceWeights = instanceWeights;
+	}
+	
+	public void setkOpt(int kOpt) {
+		this.kOpt = kOpt;
+	}
+
+	/** Constructor for the kNN machine learning algorithm.
+	 *  Takes as argument a data set. From then on, examples
+	 *  in the data set can be fed to predict() in return for
+	 *  classifications.
+	 * @return 
+	 */
 
 	public void setInstanceWeights(double[] instanceWeights) {
 		this.instanceWeights = instanceWeights;
@@ -86,9 +107,11 @@ public class kNN implements Classifier {
 		this.kOpt = findOptimalK(this.kMin, this.kMax);
 
 		initInstanceWeights();
-		backwardsElimination backwards = new backwardsElimination(dataSet, strategy, isEliminatedAttr, instanceWeights);
-		backwards.backwardsElimination();
-		traininstanceWeights(1);
+		
+		setVariableSelection(new backwardsElimination());
+		selection.variableSelection(dataSet, strategy, isEliminatedAttr, instanceWeights);
+		
+		traininstanceWeights(1);		
 	}
 
 	/**
@@ -405,49 +428,50 @@ public class kNN implements Classifier {
 		}
 		return (vote_1 > vote_0) ? 1 : 0;
 	}
+	
+    /** A method for predicting the label of a given example <tt>ex</tt>
+     * represented, as in the rest of the code, as an array of values
+     * for each of the attributes.  The method should return a
+     * prediction, i.e., 0 or 1.
+     */
+    public int predict(int[] ex) {
+    	int[] kNNindices = kNearest(this.kOpt, ex);
+    	return voteCount(kNNindices);
+    }
 
-	/**
-	 * A method for predicting the label of a given example <tt>ex</tt> represented,
-	 * as in the rest of the code, as an array of values for each of the attributes.
-	 * The method should return a prediction, i.e., 0 or 1.
-	 */
-	public int predict(int[] ex) {
-		int[] kNNindices = kNearest(this.kOpt, ex);
-		return voteCount(kNNindices);
+    /** This method should return a very brief but understandable
+     * description of the learning algorithm that is being used,
+     * appropriate for posting on the class website.
+     */
+    public String algorithmDescription() {
+    	return "A kNN implementation with cross-validation, backwards elimination, and weight training.";
+    }
+
+    /** This method should return the "author" of this program as you
+     * would like it to appear on the class website.  You can use your
+     * real name, or a pseudonym, or a name that identifies your
+     * group.
+    */
+    public String author() {
+    	return "crm & dmrd";
+    }
+    
+    /** A simple main for testing this algorithm.  This main reads a
+     * filestem from the command line, runs the learning algorithm on
+     * this dataset, and prints the test predictions to filestem.testout.
+     */
+    public static void main(String argv[])
+	throws Exception {
+	if (argv.length < 1) {
+	    System.err.println("argument: filestem");
+	    return;
 	}
 
-	/**
-	 * This method should return a very brief but understandable description of the
-	 * learning algorithm that is being used, appropriate for posting on the class
-	 * website.
-	 */
-	public String algorithmDescription() {
-		return "A kNN implementation with cross-validation, backwards elimination, and weight training.";
-	}
+	String filestem = argv[0];
+	DataSetInput input = new FileInput(filestem);
+	DataSet d = new BinaryDataSet(input);
 
-	/**
-	 * This method should return the "author" of this program as you would like it
-	 * to appear on the class website. You can use your real name, or a pseudonym,
-	 * or a name that identifies your group.
-	 */
-	public String author() {
-		return "crm & dmrd";
-	}
-
-	/**
-	 * A simple main for testing this algorithm. This main reads a filestem from the
-	 * command line, runs the learning algorithm on this dataset, and prints the
-	 * test predictions to filestem.testout.
-	 * 
-	 * @throws Exception
-	 */
-	public static void main(String argv[]) throws Exception {
-		if (argv.length < 1) {
-			System.err.println("argument: filestem");
-			return;
-		}
-
-		String filestem = argv[0];
+	Classifier c = new kNN(d, new Strategy(new EuclideanDistance(), new kFoldCrossValidation()));
 
 		DataSetInput input = new FileInput(filestem);
 		DataSet d = new BinaryDataSet(input);
