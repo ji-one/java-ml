@@ -1,6 +1,6 @@
 import java.util.Arrays;
 import java.util.Comparator;
-
+import static org.junit.Assert.*;
 
 public abstract class StepwiseVariableSelection implements VariableSelection{
 	public Strategy strategy;
@@ -9,6 +9,28 @@ public abstract class StepwiseVariableSelection implements VariableSelection{
 	public int numSets = 8;
 	public double[] instanceWeights;
 	public int kOpt = 7;
+	public DataSet getDataSet() {
+		return dataSet;
+	}
+
+	public double[] getInstanceWeights() {
+		return instanceWeights;
+	}
+
+	public Strategy getStrategy() {
+		return strategy;
+	}
+
+	public void setIsEliminatedAttr(boolean[] isEliminatedAttr) {
+		this.isEliminatedAttr = isEliminatedAttr;
+	}
+	public void setkOpt(int kOpt) {
+		this.kOpt = kOpt;
+	}
+
+	public void setInstanceWeights(double[] instanceWeights) {
+		this.instanceWeights = instanceWeights;
+	}
 	protected double calcError(int[][] kNNindices) {
 		double error = 0.0;
 		for (int i = 0; i < this.dataSet.numTrainExs; i++) {
@@ -18,20 +40,76 @@ public abstract class StepwiseVariableSelection implements VariableSelection{
 		}
 		return error;
 	}
-	protected int voteCount(int[] indices) {
-		double vote_1 = 0;
-    	double vote_0 = 0;
-    	int len = Math.min(indices.length, this.kOpt);
-    	for (int k = 0; k < len; k++) {
-    		int index = indices[k];
-    		if (this.dataSet.trainLabel[index] == 1)
-    			vote_1 += this.instanceWeights[index];
-    		else
-    			vote_0 += this.instanceWeights[index];
-    	}
-    	
-    	return (vote_1 > vote_0)? 1 : 0;
+	
+	protected abstract int voteCount(int[] is);
+	protected int[][] orderedIndices(double[][] distances) {
+		// orderedIndices[i][j] is index of jth closest example to i
+		int[][] orderedIndices = new int[this.dataSet.numTrainExs][this.dataSet.numTrainExs];
+		for (int i = 0; i < orderedIndices.length; i++) {
+			// annoying Integer to int casting issues
+			Integer[] alpha = new Integer[this.dataSet.numTrainExs];
+			for (int j = 0; j < orderedIndices.length; j++) {
+				alpha[j] = j;
+			}
+			exComparator comparator = new exComparator(distances[i], i);
+			comparator.descending = true;
+			Arrays.sort(alpha, comparator);
+			for (int j = 0; j < orderedIndices.length; j++) {
+				orderedIndices[i][j] = alpha[j];
+			}
+		}
+		return orderedIndices;
 	}
+	
+	protected abstract double getDistance(int[] vector1, int[] vector2);
+	protected int[][] computeNewNearestK(int[][] orderedIndice, double[][] temporaryDistances) {
+		// compute new k nearest
+		int[][] orderedIndices = new int[this.dataSet.numTrainExs][this.dataSet.numTrainExs];
+		for (int i = 0; i < this.dataSet.numTrainExs; i++) {
+			// annoying Integer to int casting issues
+			Integer[] integers = new Integer[this.dataSet.numTrainExs];
+			for (int j = 0; j < orderedIndice.length; j++) {
+				integers[j] = orderedIndice[i][j];
+			}
+			exComparator comparator = new exComparator(temporaryDistances[i], i);
+			comparator.descending = true;
+			Arrays.sort(integers, comparator);
+			for (int j = 0; j < orderedIndice.length; j++) {
+				orderedIndices[i][j] = integers[j];
+			}
+		}
+		return orderedIndices;
+	}
+	protected double[][] linearDistanceUpdate(double[][] distances, int m) {
+		// linear-time distance update
+		double[][] temporaryDistances = new double[this.dataSet.numTrainExs][this.dataSet.numTrainExs];
+		for (int i = 0; i < distances.length; i++) {
+			for (int j = i+1; j < distances.length; j++) {
+				double distanceCalculation = strategy.getDistanceStrategy().calcDistance(this.dataSet.trainEx[i][m], this.dataSet.trainEx[j][m]);
+				temporaryDistances[i][j] = distances[i][j] - distanceCalculation;
+				temporaryDistances[j][i] = temporaryDistances[i][j];
+			}
+		}
+		return temporaryDistances;
+	}
+	protected double[][] setCrossValidationDistance() {
+		// calculate all distances to avoid recomputation
+		double[][] distances = new double[this.dataSet.numTrainExs][this.dataSet.numTrainExs];
+		
+		for (int setNum = 0; setNum < numSets; setNum++) {
+			int from = setNum*this.dataSet.numTrainExs/numSets;
+			int to = (setNum+1)*this.dataSet.numTrainExs/numSets;
+
+			for (int t = from; t < to; t++) {
+				for (int s = t+1; s < to; s++) {
+					distances[t][s] = Double.POSITIVE_INFINITY;
+					distances[s][t] = distances[t][s];
+				}
+			}
+		}
+		return distances;
+	}
+	
 	public class exComparator implements Comparator {
 		public boolean descending;
 		private double[] dists;
@@ -81,80 +159,6 @@ public abstract class StepwiseVariableSelection implements VariableSelection{
     		return result;
 	    }
 	}
-	protected int[][] orderedIndices(double[][] distances) {
-		// orderedIndices[i][j] is index of jth closest example to i
-		int[][] orderedIndices = new int[this.dataSet.numTrainExs][this.dataSet.numTrainExs];
-		for (int i = 0; i < orderedIndices.length; i++) {
-			// annoying Integer to int casting issues
-			Integer[] alpha = new Integer[this.dataSet.numTrainExs];
-			for (int j = 0; j < orderedIndices.length; j++) {
-				alpha[j] = j;
-			}
-			exComparator comparator = new exComparator(distances[i], i);
-			comparator.descending = true;
-			Arrays.sort(alpha, comparator);
-			for (int j = 0; j < orderedIndices.length; j++) {
-				orderedIndices[i][j] = alpha[j];
-			}
-		}
-		return orderedIndices;
-	}
-	
-	protected double getDistance(int[] vector1, int[] vector2) {
-		int len = Math.min(vector1.length, vector2.length);
-		int distance = 0;
-		for (int i = 0; i < len; i++) {
-			// skip if attribute is eliminated
-			if (this.isEliminatedAttr[i] == true) continue;
-			distance += this.strategy.getDistanceStrategy().calcDistance(vector1[i], vector2[i]);
-		}
-        return distance;
-    }
-	protected int[][] computeNewNearestK(int[][] orderedIndice, double[][] temporaryDistances) {
-		// compute new k nearest
-		int[][] orderedIndices = new int[this.dataSet.numTrainExs][this.dataSet.numTrainExs];
-		for (int i = 0; i < this.dataSet.numTrainExs; i++) {
-			// annoying Integer to int casting issues
-			Integer[] integers = new Integer[this.dataSet.numTrainExs];
-			for (int j = 0; j < orderedIndice.length; j++) {
-				integers[j] = orderedIndice[i][j];
-			}
-			exComparator comparator = new exComparator(temporaryDistances[i], i);
-			comparator.descending = true;
-			Arrays.sort(integers, comparator);
-			for (int j = 0; j < orderedIndice.length; j++) {
-				orderedIndices[i][j] = integers[j];
-			}
-		}
-		return orderedIndices;
-	}
-	protected double[][] linearDistanceUpdate(double[][] distances, int m) {
-		// linear-time distance update
-		double[][] temporaryDistances = new double[this.dataSet.numTrainExs][this.dataSet.numTrainExs];
-		for (int i = 0; i < distances.length; i++) {
-			for (int j = i+1; j < distances.length; j++) {
-				double distanceCalculation = strategy.getDistanceStrategy().calcDistance(this.dataSet.trainEx[i][m], this.dataSet.trainEx[j][m]);
-				temporaryDistances[i][j] = distances[i][j] - distanceCalculation;
-				temporaryDistances[j][i] = temporaryDistances[i][j];
-			}
-		}
-		return temporaryDistances;
-	}
-	protected double[][] setCrossValidationDistance() {
-		// calculate all distances to avoid recomputation
-		double[][] distances = new double[this.dataSet.numTrainExs][this.dataSet.numTrainExs];
-		
-		for (int setNum = 0; setNum < numSets; setNum++) {
-			int from = setNum*this.dataSet.numTrainExs/numSets;
-			int to = (setNum+1)*this.dataSet.numTrainExs/numSets;
 
-			for (int t = from; t < to; t++) {
-				for (int s = t+1; s < to; s++) {
-					distances[t][s] = Double.POSITIVE_INFINITY;
-					distances[s][t] = distances[t][s];
-				}
-			}
-		}
-		return distances;
-	}
+	
 }

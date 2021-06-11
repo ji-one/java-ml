@@ -4,6 +4,9 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.Random;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 
 public class kNN implements Classifier{
 	
@@ -32,6 +35,7 @@ public class kNN implements Classifier{
 	public DataSet getDataSet() {
 		return dataSet;
 	}
+
 	public int getkMin() {
 		return kMin;
 	}
@@ -55,9 +59,21 @@ public class kNN implements Classifier{
 	public double[] getInstanceWeights() {
 		return instanceWeights;
 	}
-	
+
 	public Strategy getStrategy() {
 		return strategy;
+	}
+
+	public void setIsEliminatedAttr(boolean[] isEliminatedAttr) {
+		this.isEliminatedAttr = isEliminatedAttr;
+	}
+
+	public void setInstanceWeights(double[] instanceWeights) {
+		this.instanceWeights = instanceWeights;
+	}
+	
+	public void setkOpt(int kOpt) {
+		this.kOpt = kOpt;
 	}
 
 	/** Constructor for the kNN machine learning algorithm.
@@ -80,6 +96,7 @@ public class kNN implements Classifier{
 		
 		setVariableSelection(new backwardsElimination());
 		selection.variableSelection(dataSet, strategy, isEliminatedAttr, instanceWeights);
+		
 		traininstanceWeights(1);		
 	}
 	/** Constructor for the kNN machine learning algorithm.
@@ -414,18 +431,17 @@ public class kNN implements Classifier{
      * this dataset, and prints the test predictions to filestem.testout.
      */
     public static void main(String argv[])
-	throws FileNotFoundException, IOException {
+	throws Exception {
 	if (argv.length < 1) {
 	    System.err.println("argument: filestem");
 	    return;
 	}
 
 	String filestem = argv[0];
-
-	DataSet d = new BinaryDataSet(filestem);
+	DataSetInput input = new FileInput(filestem);
+	DataSet d = new BinaryDataSet(input);
 
 	Classifier c = new kNN(d, new Strategy(new EuclideanDistance(), new kFoldCrossValidation()));
-	
 
 	d.printTestPredictions(c, filestem);
     }
